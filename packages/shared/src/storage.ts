@@ -72,6 +72,15 @@ export function makeStorage() {
       return chrome.storage.sync.set({ team });
     },
 
+    onChangeTeam(callback: (team: string) => void) {
+      const key = "team";
+      const callbacks = keyToCallbacks.get(key) ?? [];
+      keyToCallbacks.set(key, [
+        ...callbacks,
+        callback as (value: unknown) => unknown,
+      ]);
+    },
+
     dispose() {
       keyToCallbacks.clear();
       chrome.storage.onChanged.removeListener(handleChanged);

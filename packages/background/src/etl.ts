@@ -1,9 +1,8 @@
 import type { SlackEmoji } from "shared";
-import { makeStorage, makeTeam } from "shared";
+import { makeTeam } from "shared";
 
-export const etl = async () => {
-  const storage = makeStorage();
-  const team = await makeTeam(await storage.getTeam());
+export const etl = async (teamName: string) => {
+  const team = await makeTeam(teamName);
 
   const users = (await team.getUsers()).filter(
     (user) =>
