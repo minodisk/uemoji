@@ -1,5 +1,9 @@
 # <%- displayName %>
 
+<p align="center">
+  <img src="./packages/misc/src/uemoji.png" />
+</p>
+
 <%- description %>
 
 ## Installation

@@ -1,5 +1,9 @@
 # Uemoji
 
+<p align="center">
+  <img src="./packages/misc/src/uemoji.png" />
+</p>
+
 Register Slack users' profile icons as custom emojis.
 
 ## Installation
