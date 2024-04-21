@@ -1,0 +1,15 @@
+{
+  "private": true,
+  "name": "shared",
+  "main": "src/index.ts",
+  "scripts": {
+    "check:tsc": "tsc",
+    "check:format": "pnpm run format --check",
+    "check:lint": "pnpm run lint",
+    "fix:lint": "pnpm run lint --fix",
+    "fix:format": "pnpm run format --write",
+    "format": "prettier ./src",
+    "lint": "eslint \"./src/**/*.ts\"",
+    "test": "vitest"
+  }
+}

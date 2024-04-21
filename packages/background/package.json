@@ -1,0 +1,21 @@
+{
+  "private": true,
+  "name": "background",
+  "main": "src/main.ts",
+  "scripts": {
+    "dev:js": "pnpm run js --watch",
+    "build:js": "pnpm run js --minify",
+    "js": "esbuild ./src/main.ts --bundle --outfile=../../out/background.js",
+    "check:tsc": "tsc",
+    "check:format": "pnpm run format --check",
+    "check:lint": "pnpm run lint",
+    "fix:format": "pnpm run format --write",
+    "fix:lint": "pnpm run lint --fix",
+    "format": "prettier ./src",
+    "lint": "eslint .",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "shared": "workspace:*"
+  }
+}

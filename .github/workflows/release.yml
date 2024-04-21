@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20.10.0"
+      - name: Use pnpm
+        uses: pnpm/action-setup@v2.4.0
+        with:
+          version: "8.13.1"
+      - name: Install dependencies
+        run: pnpm i
+      - name: Build
+        run: pnpm run build
+      - name: Zip
+        run: zip -r uemoji.zip out
+      - name: Upload to GitHub releases
+        uses: softprops/action-gh-release@v1
+        with:
+          files: uemoji.zip
+      - name: Upload to chrome web store
+        run: |
+          npx chrome-webstore-upload-cli@2 upload --source uemoji.zip --auto-publish
+        env:
+          EXTENSION_ID: ${{ secrets.EXTENSION_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}

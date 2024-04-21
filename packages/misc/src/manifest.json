@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "<%= displayName %>",
+  "description": "<%= description %>",
+  "version": "<%= version %>",
+  "permissions": ["alarms", "storage", "tabs"],
+  "host_permissions": ["https://*.slack.com/*", "https://*.slack-edge.com/*"],
+  "icons": {
+    "128": "icon-128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

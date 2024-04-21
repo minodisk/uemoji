@@ -1,0 +1,26 @@
+{
+  "private": true,
+  "name": "popup",
+  "main": "src/main.ts",
+  "scripts": {
+    "dev:js": "pnpm run js --watch",
+    "dev:css": "pnpm run css --watch",
+    "dev:copy": "pnpm run copy --watch",
+    "build:js": "pnpm run js --minify",
+    "build:css": "pnpm run css",
+    "build:copy": "pnpm run copy",
+    "js": "esbuild ./src/main.ts --bundle --outfile=../../out/popup.js",
+    "css": "cpx ./src/popup.css ../../out/",
+    "copy": "cpx ./src/popup.html ../../out",
+    "check:tsc": "tsc",
+    "check:format": "pnpm run format --check",
+    "check:lint": "pnpm run lint",
+    "fix:format": "pnpm run format --write",
+    "fix:lint": "pnpm run lint --fix",
+    "format": "prettier \"./src/**/*.{ts,tsx}\"",
+    "lint": "eslint \"./src/**/*.{ts,tsx}\""
+  },
+  "dependencies": {
+    "shared": "workspace:*"
+  }
+}
