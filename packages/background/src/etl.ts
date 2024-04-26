@@ -2,6 +2,9 @@ import type { SlackEmoji } from "shared";
 import { makeTeam } from "shared";
 
 export const etl = async (teamName: string) => {
+  const startedAt = new Date();
+  console.log("start etl:", teamName, startedAt);
+
   const team = await makeTeam(teamName);
 
   const users = (await team.getUsers()).filter(
@@ -51,12 +54,13 @@ export const etl = async (teamName: string) => {
         taken.add(name);
         break;
     }
+
     for (let alias of aliases) {
       let err = undefined;
       for (;;) {
         err = await team.aliasEmoji(alias, name);
         switch (err) {
-          case "error_name_taken_i18n":
+          case "error_name_taken_i18n": // maybe built-in emoji name
             alias += "_";
             continue;
           case "error_name_taken":
@@ -105,19 +109,27 @@ export const etl = async (teamName: string) => {
     }
   }
 
+  const finishedAt = new Date();
+  console.log(
+    "finish etl:",
+    teamName,
+    Math.ceil((finishedAt.getTime() - startedAt.getTime()) / (1000 * 60)),
+    "min",
+  );
   return;
 };
 
 const rTemporary = /(?:[(（].*[)）]|\d+\\\d+)/g;
+const rDelimiter = /[/|]/g;
 const rEmoji = /^[0-9a-zA-Z_-]+$/;
 const rNumeric = /^[0-9_-]+$/;
-const rInvalid = /[.\s]+/g;
 const parseNames = (raw: string) =>
   raw
     .replace(rTemporary, "")
-    .split("/")
+    .split(rDelimiter)
     .map(normalize)
     .filter((name) => !!name && rEmoji.test(name) && !rNumeric.test(name));
 
+const rInvalid = /[.\s]+/g;
 const normalize = (raw: string) =>
   raw.trim().replace(rInvalid, "_").toLowerCase();

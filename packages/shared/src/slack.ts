@@ -62,10 +62,10 @@ export type SlackUser = {
     title: string;
     phone: string;
     skype: string;
-    real_name: "string User";
-    real_name_normalized: "string User";
-    display_name: "string";
-    display_name_normalized: "string";
+    real_name: string;
+    real_name_normalized: string;
+    display_name: string;
+    display_name_normalized: string;
     fields: null;
     status_text: string;
     status_emoji: string;
@@ -86,7 +86,7 @@ export type SlackUser = {
     team: string;
     is_custom_image: boolean;
     huddle_state: "default_unset";
-    huddle_state_expiration_ts: 0;
+    huddle_state_expiration_ts: number;
   };
 };
 
@@ -353,7 +353,7 @@ export const makeTeam = async (team: string) => {
   };
 };
 
-export type BootData = {
+type BootData = {
   api_url: string;
   api_token: string;
   user_id: string;

@@ -4,7 +4,19 @@
   <img src="./packages/misc/src/uemoji.png" />
 </p>
 
-Register Slack users' profile icons as custom emojis.
+Registers the profile images of all users in Slack team as custom emojis.
+
+The setup is completed in the following 3 steps:
+
+1. Add Uemoji to Chrome.
+2. Click the Uemoji icon.
+3. Select the Slack team.
+
+Features:
+
+- No special authentication is required, but you must be logged into Slack in Chrome.
+- Automatically process once a day.
+- Add a custom emoji with a user name and register the display name of the user profile as aliases for that emoji. The display name is split with '/' or '|' and registered as multiple aliases.
 
 ## Installation
 

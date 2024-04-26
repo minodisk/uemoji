@@ -5,7 +5,6 @@ const execEtl = async (teamName: string) => {
   if (!teamName) {
     return;
   }
-  console.log("exec etl:", new Date(), teamName);
   await etl(teamName);
 };
 
