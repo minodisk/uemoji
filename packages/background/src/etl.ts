@@ -50,6 +50,9 @@ export const etl = async (teamName: string) => {
         break;
     }
     switch (await team.addEmoji(name, url)) {
+      case "fail_to_fetch_image":
+        console.log("fail_to_fetch_image:", name, url);
+        break;
       case "error_name_taken":
         taken.add(name);
         break;
