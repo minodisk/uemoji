@@ -1,5 +1,5 @@
 import type { SlackEmoji } from "shared";
-import { makeTeam } from "shared";
+import { makeTeam, sleep } from "shared";
 
 export const etl = async (teamName: string) => {
   const startedAt = new Date();
@@ -75,6 +75,8 @@ export const etl = async (teamName: string) => {
         break;
       }
     }
+
+    await sleep(100);
   }
   console.log("done");
   console.log("no permission:", Array.from(noPermissions));
