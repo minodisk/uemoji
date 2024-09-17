@@ -2,7 +2,7 @@
   "private": true,
   "name": "uemoji",
   "displayName": "Uemoji",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Registers the profile images of all users in Slack team as custom emojis.",
   "repository": {
     "type": "git",
