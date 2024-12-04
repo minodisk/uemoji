@@ -4,10 +4,6 @@ import { sleepExpo } from ".";
 export type Slack = ReturnType<typeof makeSlack>;
 
 export class SlackNoTeamError extends Error {
-  constructor() {
-    super();
-  }
-
   toString() {
     return `no slack team`;
   }
@@ -120,7 +116,7 @@ export function makeSlack() {
       if (!props) {
         return [];
       }
-      const p: Props = JSON.parse(props);
+      const p = JSON.parse(props) as Props;
       const { loggedInTeams } = p;
 
       return loggedInTeams;
@@ -168,12 +164,12 @@ export const makeTeam = async (team: string) => {
       redirect: "manual",
       credentials: "include",
     });
-    const result:
+    const result = (await resp.json()) as
       | { ok: true }
       | {
           ok: false;
           error: "ratelimited" | "emoji_not_found" | "error_name_taken";
-        } = await resp.json();
+        };
     console.log("add:", name, result);
     if (result.ok) {
       return;
@@ -204,7 +200,7 @@ export const makeTeam = async (team: string) => {
       redirect: "manual",
       credentials: "include",
     });
-    const result:
+    const result = (await resp.json()) as
       | { ok: true }
       | {
           ok: false;
@@ -213,7 +209,7 @@ export const makeTeam = async (team: string) => {
             | "emoji_not_found"
             | "error_name_taken"
             | "error_name_taken_i18n";
-        } = await resp.json();
+        };
     console.log("alias:", alias, "->", aliasFor, result);
     if (result.ok) {
       return;
@@ -239,12 +235,12 @@ export const makeTeam = async (team: string) => {
       redirect: "manual",
       credentials: "include",
     });
-    const result:
+    const result = (await resp.json()) as
       | { ok: true }
       | {
           ok: false;
           error: "ratelimited" | "no_permission";
-        } = await resp.json();
+        };
     console.log("remove:", name, result);
     if (result.ok) {
       return;
@@ -276,9 +272,9 @@ export const makeTeam = async (team: string) => {
             credentials: "include",
           },
         );
-        const conversations: SlackResponse & {
+        const conversations = (await resp.json()) as SlackResponse & {
           members: SlackUser[];
-        } = await resp.json();
+        };
         users = users.concat(conversations.members);
         if (
           conversations.response_metadata &&
@@ -310,7 +306,7 @@ export const makeTeam = async (team: string) => {
             credentials: "include",
           },
         );
-        const body: {
+        const body = (await resp.json()) as {
           ok: boolean;
           custom_emoji_total_count: number;
           paging: {
@@ -320,7 +316,7 @@ export const makeTeam = async (team: string) => {
             pages: number;
           };
           emoji: SlackEmoji[];
-        } = await resp.json();
+        };
 
         if (body.ok) {
           emojis.push(...body.emoji);
@@ -366,5 +362,5 @@ const parseBootData = (html: string): BootData => {
   if (!r || !r[1]) {
     throw new Error("boot_data not found");
   }
-  return JSON.parse(r[1]);
+  return JSON.parse(r[1]) as BootData;
 };

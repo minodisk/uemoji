@@ -14,11 +14,10 @@ const defaultLocal: LocalData = {
 };
 
 export function makeStorage() {
-  const keyToCallbacks: Map<string, ((value: unknown) => unknown)[]> =
-    new Map();
-  const handleChanged = (changes: {
-    [key: string]: chrome.storage.StorageChange;
-  }) => {
+  const keyToCallbacks = new Map<string, ((value: unknown) => unknown)[]>();
+  const handleChanged = (
+    changes: Record<string, chrome.storage.StorageChange>,
+  ) => {
     console.log("handleChanged:", changes);
     for (const key in changes) {
       const change = changes[key];
@@ -65,7 +64,7 @@ export function makeStorage() {
 
     async getTeam(): Promise<string> {
       const { team } = await chrome.storage.sync.get("team");
-      return team ?? "";
+      return (team as string) ?? "";
     },
 
     async setTeam(team: string): Promise<void> {

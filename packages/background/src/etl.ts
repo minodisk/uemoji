@@ -41,8 +41,8 @@ export const etl = async (teamName: string) => {
     };
   });
 
-  const noPermissions: Set<string> = new Set();
-  const taken: Set<string> = new Set();
+  const noPermissions = new Set<string>();
+  const taken = new Set<string>();
   for (const { name, aliases, url } of userEmojis) {
     switch (await team.removeEmoji(name)) {
       case "no_permission":
