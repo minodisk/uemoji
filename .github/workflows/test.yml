@@ -15,7 +15,11 @@ jobs:
       - name: Use pnpm
         uses: pnpm/action-setup@v4.0.0
         with:
+<<<<<<< HEAD
           version: "9.14.4"
+=======
+          version: "9.3.0"
+>>>>>>> master
       - name: Install dependencies
         run: pnpm i
       # - name: Check

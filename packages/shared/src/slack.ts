@@ -149,8 +149,16 @@ export const makeTeam = async (team: string) => {
     name: string,
     url: string,
     retries: number,
-  ): Promise<undefined | "emoji_not_found" | "error_name_taken"> => {
-    const res = await fetch(url, { credentials: "include" });
+  ): Promise<
+    undefined | "fail_to_fetch_image" | "emoji_not_found" | "error_name_taken"
+  > => {
+    let res;
+    try {
+      res = await fetch(url, { credentials: "include" });
+    } catch (e) {
+      return "fail_to_fetch_image";
+    }
+
     const image = await res.blob();
 
     const fd = new FormData();
