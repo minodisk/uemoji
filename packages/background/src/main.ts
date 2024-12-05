@@ -12,25 +12,28 @@ async function main() {
   const storage = makeStorage();
   await storage.init();
 
-  await chrome.alarms.create("etl", { periodInMinutes: 60 * 24 });
-  chrome.alarms.onAlarm.addListener((alarm) => {
-    (async () => {
-      switch (alarm.name) {
-        case "etl":
-          await execEtl(await storage.getTeam());
-          break;
-      }
-    })().catch(console.error);
+  chrome.alarms.onAlarm.addListener(async (alarm) => {
+    console.log("onAlarm:", new Date(), alarm);
+    switch (alarm.name) {
+      case "etl":
+        await execEtl(await storage.getTeam());
+        break;
+    }
+  });
+
+  chrome.runtime.onInstalled.addListener(async (reason) => {
+    console.log("onInstalled:", reason);
+    await chrome.alarms.clear("etl");
+    await chrome.alarms.create("etl", { periodInMinutes: 60 });
+    await execEtl(await storage.getTeam());
   });
 
   storage.onChangeTeam((team: string) => {
     (async () => {
-      console.log("change:", team);
+      console.log("onChangeTeam:", team);
       await execEtl(team);
     })().catch(console.error);
   });
-
-  await execEtl(await storage.getTeam());
 }
 
 main().catch(console.error);

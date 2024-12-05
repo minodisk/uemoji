@@ -15,7 +15,7 @@
   },
   "homepage": "https://chrome.google.com/webstore/detail/uemoji/",
   "engines": {
-    "node": "20.10.0"
+    "node": "22.12.0"
   },
   "scripts": {
     "dev": "pnpm run --stream --parallel /^dev:.*$/",
@@ -27,7 +27,7 @@
     "test": "pnpm run --stream --parallel test"
   },
   "dependencies": {
-    "cheerio": "1.0.0-rc.12"
+    "cheerio": "1.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",

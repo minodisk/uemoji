@@ -73,7 +73,7 @@ export const etl = async (teamName: string) => {
       }
     }
   }
-  console.log("done");
+
   console.log("no permission:", Array.from(noPermissions));
   console.log("taken:", Array.from(taken));
 
