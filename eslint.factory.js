@@ -1,4 +1,3 @@
-const { join } = require("path");
 const { FlatCompat } = require("@eslint/eslintrc");
 const tsLint = require("typescript-eslint");
 
@@ -24,8 +23,12 @@ module.exports = (dirname) => {
         parserOptions: {
           ecmaVersion: 12,
           sourceType: "module",
+          projectService: {
+            allowDefaultProject: ["*.ts"],
+            defaultProject: "./tsconfig.json",
+          },
           tsConfigRootDir: dirname,
-          project: true,
+          // project: true,
         },
       },
       plugins: {
@@ -42,15 +45,15 @@ module.exports = (dirname) => {
         "sonarjs/no-ignored-return": "error",
 
         // https://github.com/typescript-eslint/typescript-eslint/issues/2063#issuecomment-675156492
-        "@typescript-eslint/ban-types": [
-          "error",
-          {
-            extendDefaults: true,
-            types: {
-              "{}": false,
-            },
-          },
-        ],
+        // "@typescript-eslint/ban-types": [
+        //   "error",
+        //   {
+        //     extendDefaults: true,
+        //     types: {
+        //       "{}": false,
+        //     },
+        //   },
+        // ],
         "@typescript-eslint/naming-convention": [
           "warn",
           {
@@ -58,7 +61,7 @@ module.exports = (dirname) => {
             format: ["PascalCase", "camelCase"],
           },
         ],
-        "@typescript-eslint/semi": "warn",
+        // "@typescript-eslint/semi": "warn",
         "@typescript-eslint/no-floating-promises": "error",
         "@typescript-eslint/no-invalid-void-type": "error",
         "@typescript-eslint/consistent-type-imports": [

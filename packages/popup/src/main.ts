@@ -41,10 +41,12 @@ async function main() {
 
   await storage.setTeams(teams);
 
-  select.addEventListener("change", async (e) => {
-    const teamDomain = (e.target as HTMLSelectElement).value;
-    console.log("selected team:", teamDomain);
-    await storage.setTeam(teamDomain);
+  select.addEventListener("change", (e) => {
+    (async () => {
+      const teamDomain = (e.target as HTMLSelectElement).value;
+      console.log("selected team:", teamDomain);
+      await storage.setTeam(teamDomain);
+    })().catch(console.error);
   });
 }
 
