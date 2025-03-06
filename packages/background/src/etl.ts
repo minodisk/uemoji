@@ -21,14 +21,34 @@ export const etl = async (teamName: string) => {
         !!user.profile.image_32 ||
         !!user.profile.image_24),
   );
+
+  const alreadyTakenEmojis = new Set<string>();
   const userEmojis = users.map((user) => {
     const name = normalize(user.name);
+
+    let registeringName = name;
+    while (alreadyTakenEmojis.has(registeringName)) {
+      registeringName += "_";
+    }
+    alreadyTakenEmojis.add(registeringName);
 
     let aliases = parseNames(user.real_name);
     if (user.profile.display_name) {
       aliases = [...aliases, ...parseNames(user.profile.display_name)];
     }
-    aliases = Array.from(new Set(aliases)).filter((alias) => alias !== name);
+    aliases = Array.from(
+      new Set(
+        Array.from(new Set(aliases))
+          .filter((alias) => alias !== name)
+          .map((alias) => {
+            while (alreadyTakenEmojis.has(alias)) {
+              alias += "_";
+            }
+            alreadyTakenEmojis.add(alias);
+            return alias;
+          }),
+      ),
+    );
 
     return {
       name,
@@ -48,10 +68,13 @@ export const etl = async (teamName: string) => {
       case "no_permission":
         noPermissions.add(name);
         break;
+      default:
+        console.log("failed to remove emoji:", name);
+        break;
     }
     switch (await team.addEmoji(name, url)) {
       case "fail_to_fetch_image":
-        console.log("fail_to_fetch_image:", name, url);
+        console.log("failed to add emoji:", name, url);
         break;
       case "error_name_taken":
         taken.add(name);
@@ -59,10 +82,16 @@ export const etl = async (teamName: string) => {
     }
 
     for (let alias of aliases) {
-      let err = undefined;
       for (;;) {
-        err = await team.aliasEmoji(alias, name);
-        switch (err) {
+        switch (await team.removeEmoji(alias)) {
+          case "no_permission":
+            noPermissions.add(alias);
+            break;
+          default:
+            console.log("failed to remove alias:", alias);
+            break;
+        }
+        switch (await team.aliasEmoji(alias, name)) {
           case "error_name_taken_i18n": // maybe built-in emoji name
             alias += "_";
             continue;
@@ -70,6 +99,9 @@ export const etl = async (teamName: string) => {
             if (!taken.has(name)) {
               taken.add(alias);
             }
+            break;
+          default:
+            console.log("failed to add alias:", alias, name);
             break;
         }
         break;

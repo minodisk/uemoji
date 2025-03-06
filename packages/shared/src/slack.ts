@@ -351,6 +351,10 @@ export const makeTeam = async (team: string) => {
       return removeEmoji(name, 0);
     },
 
+    async removeAlias(alias: string) {
+      return removeEmoji(alias, 0);
+    },
+
     dispose() {
       // do nothing
     },

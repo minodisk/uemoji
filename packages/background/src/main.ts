@@ -24,8 +24,6 @@ async function main() {
   chrome.runtime.onInstalled.addListener(async (reason) => {
     console.log("onInstalled:", reason);
     await execEtl(await storage.getTeam());
-    await chrome.alarms.clear("etl");
-    await chrome.alarms.create("etl", { periodInMinutes: 60 });
   });
 
   storage.onChangeTeam((team: string) => {
@@ -34,6 +32,9 @@ async function main() {
       await execEtl(team);
     })().catch(console.error);
   });
+
+  await chrome.alarms.clear("etl");
+  await chrome.alarms.create("etl", { periodInMinutes: 60 * 12 });
 
   console.log("background");
 }
