@@ -65,6 +65,9 @@ export const etl = async (teamName: string) => {
   const taken = new Set<string>();
   for (const { name, aliases, url } of userEmojis) {
     switch (await team.removeEmoji(name)) {
+          case undefined:
+            // ok
+            break;
       case "no_permission":
         noPermissions.add(name);
         break;
@@ -73,6 +76,9 @@ export const etl = async (teamName: string) => {
         break;
     }
     switch (await team.addEmoji(name, url)) {
+          case undefined:
+            // ok
+            break;
       case "fail_to_fetch_image":
         console.log("failed to add emoji:", name, url);
         break;
@@ -84,6 +90,9 @@ export const etl = async (teamName: string) => {
     for (let alias of aliases) {
       for (;;) {
         switch (await team.removeEmoji(alias)) {
+          case undefined:
+            // ok
+            break;
           case "no_permission":
             noPermissions.add(alias);
             break;
@@ -92,6 +101,9 @@ export const etl = async (teamName: string) => {
             break;
         }
         switch (await team.aliasEmoji(alias, name)) {
+          case undefined:
+            // ok
+            break;
           case "error_name_taken_i18n": // maybe built-in emoji name
             alias += "_";
             continue;
@@ -158,15 +170,35 @@ export const etl = async (teamName: string) => {
 
 const rTemporary = /(?:[(（].*[)）]|\d+\\\d+)/g;
 const rDelimiter = /[/|]/g;
-const rEmoji = /^[0-9a-zA-Z_-]+$/;
 const rNumeric = /^[0-9_-]+$/;
 const parseNames = (raw: string) =>
   raw
     .replace(rTemporary, "")
     .split(rDelimiter)
     .map(normalize)
-    .filter((name) => !!name && rEmoji.test(name) && !rNumeric.test(name));
+    .filter((name) => !rNumeric.test(name));
 
 const rInvalid = /[.\s]+/g;
-const normalize = (raw: string) =>
-  raw.trim().replace(rInvalid, "_").toLowerCase();
+const rAlphabetical= /^[0-9a-zA-Z_-]+$/;
+
+/**
+ * Normalize a raw string to create valid emoji names.
+ * Splits the string by invalid characters (dots and spaces),
+ * and joins with underscore if at least one chunk is alphabetical.
+ * Otherwise joins without any separator.
+ */
+const normalize = (raw: string) => {
+  const trimmed = raw.trim();
+  const chunks = trimmed.split(rInvalid).filter(chunk => chunk.length > 0);
+  
+  // Check if at least one chunk is alphabetical
+  const hasAlphabeticalChunk = chunks.some(chunk => rAlphabetical.test(chunk));
+  
+  if (hasAlphabeticalChunk) {
+    // Join chunks with underscore if we have alphabetical chunks
+    return chunks.join("_").toLowerCase();
+  }
+  
+  // Otherwise join without separator
+  return chunks.join("").toLowerCase();
+};
