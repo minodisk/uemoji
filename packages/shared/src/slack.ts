@@ -166,12 +166,19 @@ export const makeTeam = async (team: string) => {
     fd.append("name", name);
     fd.append("token", token);
     fd.append("image", image);
-    const resp = await fetch(`https://${team}.slack.com/api/emoji.add`, {
-      method: "POST",
-      body: fd,
-      redirect: "manual",
-      credentials: "include",
-    });
+    let resp;
+    try {
+      resp = await fetch(`https://${team}.slack.com/api/emoji.add`, {
+        method: "POST",
+        body: fd,
+        redirect: "manual",
+        credentials: "include",
+      });
+    } catch (e) {
+      console.log("add: fetch error:", name, e);
+      await sleepExpo(1000, 2, retries);
+      return addEmoji(name, url, retries + 1);
+    }
     const result = (await resp.json()) as
       | { ok: true }
       | {
@@ -202,12 +209,19 @@ export const makeTeam = async (team: string) => {
     fd.append("name", alias);
     fd.append("alias_for", aliasFor);
     fd.append("token", token);
-    const resp = await fetch(`https://${team}.slack.com/api/emoji.add`, {
-      method: "POST",
-      body: fd,
-      redirect: "manual",
-      credentials: "include",
-    });
+    let resp;
+    try {
+      resp = await fetch(`https://${team}.slack.com/api/emoji.add`, {
+        method: "POST",
+        body: fd,
+        redirect: "manual",
+        credentials: "include",
+      });
+    } catch (e) {
+      console.log("alias: fetch error:", alias, "->", aliasFor, e);
+      await sleepExpo(1000, 2, retries);
+      return aliasEmoji(alias, aliasFor, retries + 1);
+    }
     const result = (await resp.json()) as
       | { ok: true }
       | {
@@ -237,12 +251,19 @@ export const makeTeam = async (team: string) => {
     const fd = new FormData();
     fd.append("name", name);
     fd.append("token", token);
-    const resp = await fetch(`https://${team}.slack.com/api/emoji.remove`, {
-      method: "POST",
-      body: fd,
-      redirect: "manual",
-      credentials: "include",
-    });
+    let resp;
+    try {
+      resp = await fetch(`https://${team}.slack.com/api/emoji.remove`, {
+        method: "POST",
+        body: fd,
+        redirect: "manual",
+        credentials: "include",
+      });
+    } catch (e) {
+      console.log("remove: fetch error:", name, e);
+      await sleepExpo(1000, 2, retries);
+      return removeEmoji(name, retries + 1);
+    }
     const result = (await resp.json()) as
       | { ok: true }
       | {
