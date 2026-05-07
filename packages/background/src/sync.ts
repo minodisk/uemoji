@@ -7,7 +7,7 @@ export interface UserEmoji {
   url: string;
 }
 
-export interface EtlBatchState {
+export interface SyncBatchState {
   teamName: string;
   userEmojis: UserEmoji[];
   processedIndex: number;
@@ -18,7 +18,7 @@ export interface EtlBatchState {
 
 export const prepareBatch = async (
   teamName: string,
-): Promise<EtlBatchState> => {
+): Promise<SyncBatchState> => {
   console.log("prepareBatch:", teamName);
   const team = await makeTeam(teamName);
 
@@ -87,8 +87,8 @@ export const prepareBatch = async (
 };
 
 export const processFromIndex = async (
-  batch: EtlBatchState,
-): Promise<EtlBatchState> => {
+  batch: SyncBatchState,
+): Promise<SyncBatchState> => {
   const team = await makeTeam(batch.teamName);
   const noPermissions = new Set<string>(batch.noPermissions);
   const taken = new Set<string>(batch.taken);
@@ -157,7 +157,7 @@ export const processFromIndex = async (
       noPermissions: Array.from(noPermissions),
       taken: Array.from(taken),
     };
-    await chrome.storage.local.set({ etlBatch: batch });
+    await chrome.storage.local.set({ syncBatch: batch });
 
     await sleep(100);
   }
@@ -165,7 +165,7 @@ export const processFromIndex = async (
   return batch;
 };
 
-export const finalizeBatch = async (batch: EtlBatchState): Promise<void> => {
+export const finalizeBatch = async (batch: SyncBatchState): Promise<void> => {
   const team = await makeTeam(batch.teamName);
 
   console.log("no permission:", batch.noPermissions);
@@ -200,7 +200,7 @@ export const finalizeBatch = async (batch: EtlBatchState): Promise<void> => {
   const finishedAt = new Date();
   const startedAt = new Date(batch.startedAt);
   console.log(
-    "finish etl:",
+    "finish sync:",
     batch.teamName,
     Math.ceil((finishedAt.getTime() - startedAt.getTime()) / (1000 * 60)),
     "min",
