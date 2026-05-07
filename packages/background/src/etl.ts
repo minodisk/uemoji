@@ -1,10 +1,25 @@
 import type { SlackEmoji } from "shared";
 import { makeTeam, sleep } from "shared";
 
-export const etl = async (teamName: string) => {
-  const startedAt = new Date();
-  console.log("start etl:", teamName, startedAt);
+export interface UserEmoji {
+  name: string;
+  aliases: string[];
+  url: string;
+}
 
+export interface EtlBatchState {
+  teamName: string;
+  userEmojis: UserEmoji[];
+  processedIndex: number;
+  noPermissions: string[];
+  taken: string[];
+  startedAt: string;
+}
+
+export const prepareBatch = async (
+  teamName: string,
+): Promise<EtlBatchState> => {
+  console.log("prepareBatch:", teamName);
   const team = await makeTeam(teamName);
 
   const users = (await team.getUsers()).filter(
@@ -61,13 +76,31 @@ export const etl = async (teamName: string) => {
     };
   });
 
-  const noPermissions = new Set<string>();
-  const taken = new Set<string>();
-  for (const { name, aliases, url } of userEmojis) {
+  return {
+    teamName,
+    userEmojis,
+    processedIndex: 0,
+    noPermissions: [],
+    taken: [],
+    startedAt: new Date().toISOString(),
+  };
+};
+
+export const processFromIndex = async (
+  batch: EtlBatchState,
+): Promise<EtlBatchState> => {
+  const team = await makeTeam(batch.teamName);
+  const noPermissions = new Set<string>(batch.noPermissions);
+  const taken = new Set<string>(batch.taken);
+
+  for (let i = batch.processedIndex; i < batch.userEmojis.length; i++) {
+    const userEmoji = batch.userEmojis[i];
+    if (!userEmoji) continue;
+    const { name, aliases, url } = userEmoji;
+
     switch (await team.removeEmoji(name)) {
-          case undefined:
-            // ok
-            break;
+      case undefined:
+        break;
       case "no_permission":
         noPermissions.add(name);
         break;
@@ -76,9 +109,8 @@ export const etl = async (teamName: string) => {
         break;
     }
     switch (await team.addEmoji(name, url)) {
-          case undefined:
-            // ok
-            break;
+      case undefined:
+        break;
       case "fail_to_fetch_image":
         console.log("failed to add emoji:", name, url);
         break;
@@ -91,7 +123,6 @@ export const etl = async (teamName: string) => {
       for (;;) {
         switch (await team.removeEmoji(alias)) {
           case undefined:
-            // ok
             break;
           case "no_permission":
             noPermissions.add(alias);
@@ -102,9 +133,8 @@ export const etl = async (teamName: string) => {
         }
         switch (await team.aliasEmoji(alias, name)) {
           case undefined:
-            // ok
             break;
-          case "error_name_taken_i18n": // maybe built-in emoji name
+          case "error_name_taken_i18n":
             alias += "_";
             continue;
           case "error_name_taken":
@@ -120,19 +150,28 @@ export const etl = async (teamName: string) => {
       }
     }
 
+    // 進捗保存: killされてもここまでの処理は記録される
+    batch = {
+      ...batch,
+      processedIndex: i + 1,
+      noPermissions: Array.from(noPermissions),
+      taken: Array.from(taken),
+    };
+    await chrome.storage.local.set({ etlBatch: batch });
+
     await sleep(100);
   }
 
-  console.log("no permission:", Array.from(noPermissions));
-  console.log("taken:", Array.from(taken));
+  return batch;
+};
 
-  const toBeRemoved = new Set<string>();
-  for (const n of noPermissions) {
-    toBeRemoved.add(n);
-  }
-  for (const n of taken) {
-    toBeRemoved.add(n);
-  }
+export const finalizeBatch = async (batch: EtlBatchState): Promise<void> => {
+  const team = await makeTeam(batch.teamName);
+
+  console.log("no permission:", batch.noPermissions);
+  console.log("taken:", batch.taken);
+
+  const toBeRemoved = new Set<string>([...batch.noPermissions, ...batch.taken]);
 
   const emojis = await team.getEmojis();
   const nameToEmoji = new Map(emojis.map((emoji) => [emoji.name, emoji]));
@@ -159,13 +198,13 @@ export const etl = async (teamName: string) => {
   }
 
   const finishedAt = new Date();
+  const startedAt = new Date(batch.startedAt);
   console.log(
     "finish etl:",
-    teamName,
+    batch.teamName,
     Math.ceil((finishedAt.getTime() - startedAt.getTime()) / (1000 * 60)),
     "min",
   );
-  return;
 };
 
 const rTemporary = /(?:[(（].*[)）]|\d+\\\d+)/g;
@@ -179,7 +218,7 @@ const parseNames = (raw: string) =>
     .filter((name) => !rNumeric.test(name));
 
 const rInvalid = /[.\s]+/g;
-const rAlphabetical= /^[0-9a-zA-Z_-]+$/;
+const rAlphabetical = /^[0-9a-zA-Z_-]+$/;
 
 /**
  * Normalize a raw string to create valid emoji names.
@@ -189,16 +228,18 @@ const rAlphabetical= /^[0-9a-zA-Z_-]+$/;
  */
 const normalize = (raw: string) => {
   const trimmed = raw.trim();
-  const chunks = trimmed.split(rInvalid).filter(chunk => chunk.length > 0);
-  
+  const chunks = trimmed.split(rInvalid).filter((chunk) => chunk.length > 0);
+
   // Check if at least one chunk is alphabetical
-  const hasAlphabeticalChunk = chunks.some(chunk => rAlphabetical.test(chunk));
-  
+  const hasAlphabeticalChunk = chunks.some((chunk) =>
+    rAlphabetical.test(chunk),
+  );
+
   if (hasAlphabeticalChunk) {
     // Join chunks with underscore if we have alphabetical chunks
     return chunks.join("_").toLowerCase();
   }
-  
+
   // Otherwise join without separator
   return chunks.join("").toLowerCase();
 };
