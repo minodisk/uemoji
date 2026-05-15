@@ -10,9 +10,17 @@ const storage = makeStorage();
 
 const ALARM_SYNC = "sync";
 const ALARM_SYNC_CONTINUE = "sync-continue";
-const PERIOD_MINUTES = 180;
+const POST_SYNC_DELAY_MINUTES = 60;
+const FALLBACK_DELAY_MINUTES = 1;
 
 let syncRunning = false;
+
+const scheduleNextSync = async () => {
+  await chrome.alarms.create(ALARM_SYNC, {
+    delayInMinutes: POST_SYNC_DELAY_MINUTES,
+  });
+  console.log(`next sync scheduled in ${POST_SYNC_DELAY_MINUTES}min`);
+};
 
 const runSync = async (teamName: string) => {
   if (!teamName) {
@@ -56,6 +64,8 @@ const runSync = async (teamName: string) => {
         lastSyncCompleted: new Date().toISOString(),
       });
       console.log("sync batch complete");
+      // 完了から POST_SYNC_DELAY_MINUTES 後に次回をスケジュール
+      await scheduleNextSync();
     } else {
       // killされて途中で終わった場合はここに来ない(killされるので)が、
       // 念のため継続alarmをスケジュール
@@ -83,8 +93,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 chrome.runtime.onInstalled.addListener(async (reason) => {
   console.log("onInstalled:", reason);
   await chrome.alarms.create(ALARM_SYNC, {
-    delayInMinutes: 1,
-    periodInMinutes: PERIOD_MINUTES,
+    delayInMinutes: FALLBACK_DELAY_MINUTES,
   });
   await storage.init();
   await runSync(await storage.getTeam());
@@ -93,19 +102,20 @@ chrome.runtime.onInstalled.addListener(async (reason) => {
 // Service Worker復帰時にalarmが消えていたら再作成、バッチ途中なら継続alarmも作成
 chrome.alarms.get(ALARM_SYNC).then(async (alarm) => {
   console.log("existing alarm:", alarm);
-  if (!alarm) {
-    console.log("alarm not found, recreating");
-    await chrome.alarms.create(ALARM_SYNC, {
-      delayInMinutes: 1,
-      periodInMinutes: PERIOD_MINUTES,
-    });
-  }
 
-  // バッチ途中なら継続alarm作成
   const { syncBatch } = (await chrome.storage.local.get("syncBatch")) as {
     syncBatch?: SyncBatchState;
   };
-  if (syncBatch && syncBatch.processedIndex < syncBatch.userEmojis.length) {
+  const batchInProgress =
+    !!syncBatch && syncBatch.processedIndex < syncBatch.userEmojis.length;
+
+  if (!alarm && !batchInProgress) {
+    // セーフティネット: alarm も batch も無ければ次回を予約
+    console.log("alarm not found, recreating");
+    await scheduleNextSync();
+  }
+
+  if (batchInProgress) {
     const existing = await chrome.alarms.get(ALARM_SYNC_CONTINUE);
     if (!existing) {
       console.log(
