@@ -1,5 +1,5 @@
 import { load } from "cheerio";
-import { sleepExpo } from ".";
+import { fetchSlackWithRetry } from "./fetch-retry";
 
 export type Slack = ReturnType<typeof makeSlack>;
 
@@ -130,7 +130,6 @@ export function makeSlack() {
 
 export const makeTeam = async (team: string) => {
   const getAPIToken = async (teamName: string) => {
-    // Get API token
     const home = await fetch(`https://${teamName}.slack.com/home`, {
       credentials: "include",
     });
@@ -148,7 +147,6 @@ export const makeTeam = async (team: string) => {
   const addEmoji = async (
     name: string,
     url: string,
-    retries: number,
   ): Promise<
     undefined | "fail_to_fetch_image" | "emoji_not_found" | "error_name_taken"
   > => {
@@ -156,6 +154,7 @@ export const makeTeam = async (team: string) => {
     try {
       res = await fetch(url, { credentials: "include" });
     } catch (e) {
+      console.log("add: fetch image error:", name, e);
       return "fail_to_fetch_image";
     }
 
@@ -166,19 +165,15 @@ export const makeTeam = async (team: string) => {
     fd.append("name", name);
     fd.append("token", token);
     fd.append("image", image);
-    let resp;
-    try {
-      resp = await fetch(`https://${team}.slack.com/api/emoji.add`, {
+    const resp = await fetchSlackWithRetry(
+      `https://${team}.slack.com/api/emoji.add`,
+      {
         method: "POST",
         body: fd,
         redirect: "manual",
         credentials: "include",
-      });
-    } catch (e) {
-      console.log("add: fetch error:", name, e);
-      await sleepExpo(1000, 2, retries);
-      return addEmoji(name, url, retries + 1);
-    }
+      },
+    );
     const result = (await resp.json()) as
       | { ok: true }
       | {
@@ -190,9 +185,7 @@ export const makeTeam = async (team: string) => {
       return;
     }
     if (result.error === "ratelimited") {
-      // exponential backoff
-      await sleepExpo(1000, 2, retries);
-      return addEmoji(name, url, retries + 1);
+      return;
     }
     return result.error;
   };
@@ -200,7 +193,6 @@ export const makeTeam = async (team: string) => {
   const aliasEmoji = async (
     alias: string,
     aliasFor: string,
-    retries: number,
   ): Promise<
     undefined | "emoji_not_found" | "error_name_taken" | "error_name_taken_i18n"
   > => {
@@ -209,19 +201,15 @@ export const makeTeam = async (team: string) => {
     fd.append("name", alias);
     fd.append("alias_for", aliasFor);
     fd.append("token", token);
-    let resp;
-    try {
-      resp = await fetch(`https://${team}.slack.com/api/emoji.add`, {
+    const resp = await fetchSlackWithRetry(
+      `https://${team}.slack.com/api/emoji.add`,
+      {
         method: "POST",
         body: fd,
         redirect: "manual",
         credentials: "include",
-      });
-    } catch (e) {
-      console.log("alias: fetch error:", alias, "->", aliasFor, e);
-      await sleepExpo(1000, 2, retries);
-      return aliasEmoji(alias, aliasFor, retries + 1);
-    }
+      },
+    );
     const result = (await resp.json()) as
       | { ok: true }
       | {
@@ -237,33 +225,26 @@ export const makeTeam = async (team: string) => {
       return;
     }
     if (result.error === "ratelimited") {
-      // exponential backoff
-      await sleepExpo(1000, 2, retries);
-      return aliasEmoji(alias, aliasFor, retries + 1);
+      return;
     }
     return result.error;
   };
 
   const removeEmoji = async (
     name: string,
-    retries: number,
   ): Promise<undefined | "no_permission"> => {
     const fd = new FormData();
     fd.append("name", name);
     fd.append("token", token);
-    let resp;
-    try {
-      resp = await fetch(`https://${team}.slack.com/api/emoji.remove`, {
+    const resp = await fetchSlackWithRetry(
+      `https://${team}.slack.com/api/emoji.remove`,
+      {
         method: "POST",
         body: fd,
         redirect: "manual",
         credentials: "include",
-      });
-    } catch (e) {
-      console.log("remove: fetch error:", name, e);
-      await sleepExpo(1000, 2, retries);
-      return removeEmoji(name, retries + 1);
-    }
+      },
+    );
     const result = (await resp.json()) as
       | { ok: true }
       | {
@@ -275,9 +256,7 @@ export const makeTeam = async (team: string) => {
       return;
     }
     if (result.error === "ratelimited") {
-      // exponential backoff
-      await sleepExpo(1000, 2, retries);
-      return removeEmoji(name, retries + 1);
+      return;
     }
     return result.error;
   };
@@ -295,7 +274,7 @@ export const makeTeam = async (team: string) => {
         if (cursor) {
           params.append("cursor", cursor);
         }
-        const resp = await fetch(
+        const resp = await fetchSlackWithRetry(
           `https://${team}.slack.com/api/users.list?${params.toString()}`,
           {
             credentials: "include",
@@ -328,7 +307,7 @@ export const makeTeam = async (team: string) => {
           count: "1000",
           query: "",
         });
-        const resp = await fetch(
+        const resp = await fetchSlackWithRetry(
           `https://${team}.slack.com/api/emoji.adminList?${params.toString()}`,
           {
             method: "POST",
@@ -361,19 +340,19 @@ export const makeTeam = async (team: string) => {
     },
 
     async addEmoji(name: string, url: string) {
-      return addEmoji(name, url, 0);
+      return addEmoji(name, url);
     },
 
     async aliasEmoji(name: string, aliasFor: string) {
-      return aliasEmoji(name, aliasFor, 0);
+      return aliasEmoji(name, aliasFor);
     },
 
     async removeEmoji(name: string) {
-      return removeEmoji(name, 0);
+      return removeEmoji(name);
     },
 
     async removeAlias(alias: string) {
-      return removeEmoji(alias, 0);
+      return removeEmoji(alias);
     },
 
     dispose() {
