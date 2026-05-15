@@ -4,7 +4,11 @@
   "description": "<%- description %>",
   "version": "<%- version %>",
   "permissions": ["alarms", "storage"],
-  "host_permissions": ["https://*.slack.com/*", "https://*.slack-edge.com/*"],
+  "host_permissions": [
+    "https://*.slack.com/*",
+    "https://*.slack-edge.com/*",
+    "https://secure.gravatar.com/*"
+  ],
   "icons": {
     "128": "icon-128.png"
   },
