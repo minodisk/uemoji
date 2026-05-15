@@ -7,7 +7,7 @@
   "host_permissions": [
     "https://*.slack.com/*",
     "https://*.slack-edge.com/*",
-    "https://secure.gravatar.com/*"
+    "https://secure.gravatar.com/avatar/*"
   ],
   "icons": {
     "128": "icon-128.png"
