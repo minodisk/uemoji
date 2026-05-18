@@ -25,6 +25,8 @@ jobs:
         run: pnpm i
       - name: Build
         run: pnpm run build
+        env:
+          VERSION: ${{ github.event.release.tag_name }}
       - name: Zip
         run: zip -r uemoji.zip out
       - name: Upload artifact

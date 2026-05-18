@@ -17,19 +17,16 @@ uemoji の GitHub Release を作成し、CI 経由で Chrome Web Store
    - `fix` のみの場合: パッチバージョンを上げる
    - 破壊的変更がある場合: メジャーバージョンを上げる
    - 判断に迷う場合はユーザーに確認する
-4. ルートの `package.json` の `version` を新バージョンに更新する PR を作成しマージする
-   （manifest.json は `package.json` から ejs で生成されるため、ここを上げないと
-   Chrome Web Store 側のバージョン重複でリジェクトされる）
-5. `gh release create v<version> --generate-notes --draft` で draft リリースを作成する
-   （CI が `created` イベントでトリガーされ、ビルド・アップロード後に自動で publish される）
-6. `gh run list --limit 1` で CI の実行状況を監視し、成功を確認する
-7. リリースが publish されたことを `gh release view v<version>` で確認する
+4. `gh release create v<version> --generate-notes --draft` で draft リリースを作成する
+   （CI が `created` イベントでトリガーされ、tag 名から `v` を剥がしたものを `VERSION`
+   env として build に渡し、manifest.json に注入する）
+5. `gh run list --limit 1` で CI の実行状況を監視し、成功を確認する
+6. リリースが publish されたことを `gh release view v<version>` で確認する
 
 ### ルール
 
 - タグは必ず `v<version>` 形式にする（例: `v0.0.9`, `v1.2.3`）
 - Release は必ず `--draft` で作成する（CI が draft にアセットをアップロードした後、
   自動で publish する）
-- `package.json` の version を上げずにタグだけ作ると Chrome Web Store のアップロードが
-  失敗する。必ず PR でバージョンを上げてから release を作成する
+- バージョンは tag 名が単一の真実。`package.json` には `version` を持たない
 - CI が失敗した場合はエラー内容をユーザーに報告する

@@ -3,10 +3,10 @@
   "name": "misc",
   "main": "src/main.ts",
   "scripts": {
-    "dev:gen": "nodemon --watch ../../package.json --watch src --ext json,md --exec 'pnpm run /^build:gen:.*$/'",
+    "dev:gen": "nodemon --watch ../../package.json --watch src --watch scripts --ext json,md,mjs --exec 'pnpm run /^build:gen:.*$/'",
     "dev:copy": "pnpm run /^build:copy:*/ --watch",
     "build:gen:readme": "ejs ./src/README.md -f ../../package.json -o ../../README.md",
-    "build:gen:manifest": "ejs ./src/manifest.json -f ../../package.json -o ../../out/manifest.json",
+    "build:gen:manifest": "node ./scripts/gen-manifest.mjs",
     "build:copy:icon": "cpx './src/icon-*.png' ../../out",
     "build:copy:default-avatar": "cpx './src/default-avatar.png' ../../out"
   }
