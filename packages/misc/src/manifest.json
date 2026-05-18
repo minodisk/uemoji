@@ -6,8 +6,7 @@
   "permissions": ["alarms", "storage"],
   "host_permissions": [
     "https://*.slack.com/*",
-    "https://*.slack-edge.com/*",
-    "https://secure.gravatar.com/avatar/*"
+    "https://avatars.slack-edge.com/*"
   ],
   "icons": {
     "128": "icon-128.png"

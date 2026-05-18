@@ -25,6 +25,8 @@ export const prepareBatch = async (
   const users = (await team.getUsers()).filter(
     (user) =>
       !user.deleted &&
+      // Slackbot is returned with is_bot=false, so exclude it by id.
+      user.id !== "USLACKBOT" &&
       !user.is_bot &&
       !user.is_app_user &&
       !user.is_forgotten &&
@@ -65,14 +67,23 @@ export const prepareBatch = async (
       ),
     );
 
+    // Users without a custom avatar get a Gravatar fallback URL in
+    // image_*, and Gravatar doesn't return CORS headers, so fetching
+    // from the extension fails. These users have an avatar_hash that
+    // starts with "g" (custom-avatar users have a plain hex hash; only
+    // Slack's default fallback uses the "g" + hex form). Substitute a
+    // bundled placeholder image so the emoji name is still reserved.
+    const url = user.profile.avatar_hash?.startsWith("g")
+      ? chrome.runtime.getURL("default-avatar.png")
+      : user.profile.image_72 ||
+        user.profile.image_48 ||
+        user.profile.image_32 ||
+        user.profile.image_24;
+
     return {
       name,
       aliases,
-      url:
-        user.profile.image_72 ||
-        user.profile.image_48 ||
-        user.profile.image_32 ||
-        user.profile.image_24,
+      url,
     };
   });
 
