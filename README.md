@@ -20,15 +20,23 @@ Features:
 
 ## How sync works
 
-The sync cycle is driven by `chrome.alarms` and resumable across Service Worker restarts. A periodic alarm fires every 3 hours and runs a batch over all users; progress is persisted per user, so a kill/restart picks up from the last processed index.
+The sync cycle is driven by `chrome.alarms` and resumable across Service Worker restarts. Sync is scheduled as a **one-shot alarm**: after a batch completes, the next `ALARM_SYNC` is scheduled 1 hour later. Progress is persisted per user, so a kill/restart picks up from the last processed index.
 
 ```mermaid
 flowchart TD
-  Install([onInstalled / browser start]) --> CreateAlarm[Create ALARM_SYNC every 180min]
-  CreateAlarm --> Idle
-  Idle{SW idle/stopped} -->|ALARM_SYNC fires<br/>every 3h| Wake[SW wakes up]
+  Install([onInstalled]) --> InitAlarm[Create ALARM_SYNC<br/>delayInMinutes: 1<br/>+ runSync immediately]
+  SWStart([SW start]) --> CheckExisting{ALARM_SYNC exists?<br/>batch in progress?}
+  CheckExisting -->|no alarm, no batch| ScheduleNext[scheduleNextSync:<br/>ALARM_SYNC in 60min]
+  CheckExisting -->|batch in progress| ScheduleContinue[Create ALARM_SYNC_CONTINUE<br/>delayInMinutes: 1]
+  CheckExisting -->|alarm exists| Idle
+
+  InitAlarm --> Idle
+  ScheduleNext --> Idle
+  ScheduleContinue --> Idle
+
+  Idle{SW idle/stopped} -->|ALARM_SYNC fires<br/>one-shot| Wake[SW wakes up]
   Idle -->|ALARM_SYNC_CONTINUE fires<br/>1min after interrupt| Wake
-  Idle -->|popup / team change| Wake
+  Idle -->|team change| Wake
   Wake --> Check{syncBatch in<br/>chrome.storage.local?}
   Check -->|yes, unfinished| Resume[Resume from processedIndex]
   Check -->|no| Prepare[prepareBatch:<br/>fetch users + build emoji list]
@@ -38,10 +46,11 @@ flowchart TD
   SaveProgress --> MoreUsers{more users?}
   MoreUsers -->|yes| Process
   MoreUsers -->|no| Finalize[finalizeBatch +<br/>clear syncBatch]
-  Finalize --> Idle
+  Finalize --> ScheduleNextAfter[scheduleNextSync:<br/>ALARM_SYNC in 60min]
+  ScheduleNextAfter --> Idle
 
   Process -.->|SW killed<br/>5min limit / browser close| Killed([SW terminated])
-  Killed -.->|next alarm or popup| Wake
+  Killed -.->|next alarm or SW restart| Wake
 ```
 
 Slack rate limits (HTTP 429 with `Retry-After`, or HTTP 5xx) are handled inside `fetchSlackWithRetry` with header-driven sleep and exponential backoff, so the loop itself does not need to know about retries.
