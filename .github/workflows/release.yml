@@ -1,16 +1,15 @@
 name: Release
 
-permissions:
-  contents: write
-
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  release:
+    types: [created]
 
 jobs:
   build:
+    name: Build
+    if: startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,17 +25,61 @@ jobs:
         run: pnpm i
       - name: Build
         run: pnpm run build
+        env:
+          VERSION: ${{ github.event.release.tag_name }}
       - name: Zip
         run: zip -r uemoji.zip out
-      - name: Upload to GitHub releases
-        uses: softprops/action-gh-release@v1
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: uemoji.zip
-      - name: Upload to chrome web store
-        run: |
-          npx chrome-webstore-upload-cli@2 upload --source uemoji.zip --auto-publish
+          name: uemoji-zip
+          path: uemoji.zip
+
+  github-release:
+    name: Upload to GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: uemoji-zip
+      - name: Upload to GitHub release
+        run: gh release upload "$TAG_NAME" uemoji.zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+
+  webstore-upload:
+    name: Upload to Chrome Web Store
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: uemoji-zip
+      - name: Upload to Chrome Web Store
+        run: npx chrome-webstore-upload-cli@2 upload --source uemoji.zip --auto-publish
         env:
           EXTENSION_ID: ${{ secrets.EXTENSION_ID }}
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+
+  publish:
+    name: Publish Release
+    needs: [github-release, webstore-upload]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish draft release
+        run: gh release edit "$TAG_NAME" --draft=false
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
