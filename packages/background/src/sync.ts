@@ -25,7 +25,7 @@ export const prepareBatch = async (
   const users = (await team.getUsers()).filter(
     (user) =>
       !user.deleted &&
-      // Slackbot は is_bot=false で返るため ID で明示的に除外する
+      // Slackbot is returned with is_bot=false, so exclude it by id.
       user.id !== "USLACKBOT" &&
       !user.is_bot &&
       !user.is_app_user &&
@@ -67,11 +67,12 @@ export const prepareBatch = async (
       ),
     );
 
-    // アバター未設定ユーザーは Slack 側で image_* が Gravatar (secure.gravatar.com)
-    // のフォールバック URL になり、Gravatar は CORS ヘッダを返さないため拡張から
-    // fetch すると失敗する。avatar_hash が "g" 始まりのものが該当 (カスタム設定済
-    // ユーザーは英数字ハッシュ、Slack 既定のフォールバックのみ "g" + hex)。
-    // 名前の予約目的で、拡張にバンドルしたデフォ画像で代用する。
+    // Users without a custom avatar get a Gravatar fallback URL in
+    // image_*, and Gravatar doesn't return CORS headers, so fetching
+    // from the extension fails. These users have an avatar_hash that
+    // starts with "g" (custom-avatar users have a plain hex hash; only
+    // Slack's default fallback uses the "g" + hex form). Substitute a
+    // bundled placeholder image so the emoji name is still reserved.
     const url = user.profile.avatar_hash?.startsWith("g")
       ? chrome.runtime.getURL("default-avatar.png")
       : user.profile.image_72 ||
