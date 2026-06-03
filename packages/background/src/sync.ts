@@ -1,11 +1,26 @@
-import type { SlackEmoji } from "shared";
+import type { SlackEmoji, SlackUser } from "shared";
 import { makeTeam, sleep } from "shared";
 
 export interface UserEmoji {
+  userId: string;
   name: string;
   aliases: string[];
   url: string;
 }
+
+// Users without a custom avatar get a Gravatar fallback URL in
+// image_*, and Gravatar doesn't return CORS headers, so fetching
+// from the extension fails. These users have an avatar_hash that
+// starts with "g" (custom-avatar users have a plain hex hash; only
+// Slack's default fallback uses the "g" + hex form). Substitute a
+// bundled placeholder image so the emoji name is still reserved.
+const avatarUrl = (user: SlackUser): string =>
+  user.profile.avatar_hash?.startsWith("g")
+    ? chrome.runtime.getURL("default-avatar.png")
+    : user.profile.image_72 ||
+      user.profile.image_48 ||
+      user.profile.image_32 ||
+      user.profile.image_24;
 
 export interface SyncBatchState {
   teamName: string;
@@ -67,23 +82,11 @@ export const prepareBatch = async (
       ),
     );
 
-    // Users without a custom avatar get a Gravatar fallback URL in
-    // image_*, and Gravatar doesn't return CORS headers, so fetching
-    // from the extension fails. These users have an avatar_hash that
-    // starts with "g" (custom-avatar users have a plain hex hash; only
-    // Slack's default fallback uses the "g" + hex form). Substitute a
-    // bundled placeholder image so the emoji name is still reserved.
-    const url = user.profile.avatar_hash?.startsWith("g")
-      ? chrome.runtime.getURL("default-avatar.png")
-      : user.profile.image_72 ||
-        user.profile.image_48 ||
-        user.profile.image_32 ||
-        user.profile.image_24;
-
     return {
+      userId: user.id,
       name,
       aliases,
-      url,
+      url: avatarUrl(user),
     };
   });
 
@@ -94,6 +97,24 @@ export const prepareBatch = async (
     noPermissions: [],
     taken: [],
     startedAt: new Date().toISOString(),
+  };
+};
+
+// Re-fetch users.list on batch resume and swap in fresh avatar URLs
+// keyed by user ID. Array order and processedIndex are untouched, so
+// renames or departures during a batch never shift resume progress.
+// Users missing from the fresh list keep their original URL.
+export const refreshAvatarUrls = async (
+  batch: SyncBatchState,
+): Promise<SyncBatchState> => {
+  const team = await makeTeam(batch.teamName);
+  const users = new Map((await team.getUsers()).map((user) => [user.id, user]));
+  return {
+    ...batch,
+    userEmojis: batch.userEmojis.map((userEmoji) => {
+      const user = users.get(userEmoji.userId);
+      return user ? { ...userEmoji, url: avatarUrl(user) } : userEmoji;
+    }),
   };
 };
 
@@ -161,7 +182,7 @@ export const processFromIndex = async (
       }
     }
 
-    // 進捗保存: killされてもここまでの処理は記録される
+    // Persist progress so it survives a service worker kill
     batch = {
       ...batch,
       processedIndex: i + 1,

@@ -4,6 +4,7 @@ import {
   finalizeBatch,
   prepareBatch,
   processFromIndex,
+  refreshAvatarUrls,
 } from "./sync";
 
 const storage = makeStorage();
@@ -32,7 +33,7 @@ const runSync = async (teamName: string) => {
   }
   syncRunning = true;
   try {
-    // バッチ状態確認
+    // Check for an in-progress batch
     const { syncBatch } = (await chrome.storage.local.get("syncBatch")) as {
       syncBatch?: SyncBatchState;
     };
@@ -43,13 +44,16 @@ const runSync = async (teamName: string) => {
       syncBatch.teamName === teamName &&
       syncBatch.processedIndex < syncBatch.userEmojis.length
     ) {
-      // 前回の続きから再開
+      // Resume from the previous run. Avatar URLs snapshotted at
+      // prepareBatch time may be stale, so re-fetch users.list and
+      // refresh them before processing
       console.log(
         `resuming sync: ${syncBatch.processedIndex}/${syncBatch.userEmojis.length}`,
       );
-      batch = syncBatch;
+      batch = await refreshAvatarUrls(syncBatch);
+      await chrome.storage.local.set({ syncBatch: batch });
     } else {
-      // 新規バッチ開始
+      // Start a new batch
       batch = await prepareBatch(teamName);
       await chrome.storage.local.set({ syncBatch: batch });
     }
@@ -57,18 +61,18 @@ const runSync = async (teamName: string) => {
     batch = await processFromIndex(batch);
 
     if (batch.processedIndex >= batch.userEmojis.length) {
-      // 全件完了
+      // All entries processed
       await finalizeBatch(batch);
       await chrome.storage.local.remove("syncBatch");
       await chrome.storage.local.set({
         lastSyncCompleted: new Date().toISOString(),
       });
       console.log("sync batch complete");
-      // 完了から POST_SYNC_DELAY_MINUTES 後に次回をスケジュール
+      // Schedule the next sync POST_SYNC_DELAY_MINUTES after completion
       await scheduleNextSync();
     } else {
-      // killされて途中で終わった場合はここに来ない(killされるので)が、
-      // 念のため継続alarmをスケジュール
+      // When the service worker is killed mid-batch we never reach
+      // here, but schedule a continue alarm just in case
       await chrome.alarms.create(ALARM_SYNC_CONTINUE, { delayInMinutes: 1 });
       console.log("sync batch interrupted, scheduled continue");
     }
@@ -99,7 +103,8 @@ chrome.runtime.onInstalled.addListener(async (reason) => {
   await runSync(await storage.getTeam());
 });
 
-// Service Worker復帰時にalarmが消えていたら再作成、バッチ途中なら継続alarmも作成
+// On service worker wake-up, recreate the alarm if it's gone, and
+// schedule a continue alarm if a batch is in progress
 chrome.alarms.get(ALARM_SYNC).then(async (alarm) => {
   console.log("existing alarm:", alarm);
 
@@ -110,7 +115,7 @@ chrome.alarms.get(ALARM_SYNC).then(async (alarm) => {
     !!syncBatch && syncBatch.processedIndex < syncBatch.userEmojis.length;
 
   if (!alarm && !batchInProgress) {
-    // セーフティネット: alarm も batch も無ければ次回を予約
+    // Safety net: schedule the next sync if neither an alarm nor a batch exists
     console.log("alarm not found, recreating");
     await scheduleNextSync();
   }
@@ -132,7 +137,7 @@ chrome.alarms.get(ALARM_SYNC).then(async (alarm) => {
 storage.onChangeTeam((team: string) => {
   (async () => {
     console.log("onChangeTeam:", team);
-    // チーム変更時は進行中バッチをクリア
+    // Clear the in-progress batch when the team changes
     await chrome.storage.local.remove("syncBatch");
     await runSync(team);
   })().catch(console.error);
