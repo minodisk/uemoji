@@ -100,9 +100,10 @@ export const prepareBatch = async (
   };
 };
 
-// バッチ再開時にusers.listを取り直し、user_idで引き直してURLだけ差し替える。
-// 配列の順序・処理済みindexは変えないので、名前変更や入退社があってもズレない。
-// 取得できなかったユーザー(退社など)はバッチ作成時のURLをそのまま使う。
+// Re-fetch users.list on batch resume and swap in fresh avatar URLs
+// keyed by user ID. Array order and processedIndex are untouched, so
+// renames or departures during a batch never shift resume progress.
+// Users missing from the fresh list keep their original URL.
 export const refreshAvatarUrls = async (
   batch: SyncBatchState,
 ): Promise<SyncBatchState> => {
@@ -181,7 +182,7 @@ export const processFromIndex = async (
       }
     }
 
-    // 進捗保存: killされてもここまでの処理は記録される
+    // Persist progress so it survives a service worker kill
     batch = {
       ...batch,
       processedIndex: i + 1,
