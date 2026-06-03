@@ -7,7 +7,9 @@ const root = resolve(here, "../../..");
 
 const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 const template = readFileSync(resolve(here, "../src/manifest.json"), "utf8");
-const version = (process.env.VERSION ?? "0.0.0-dev").replace(/^v/, "");
+// Chrome requires version to be 1-4 dot-separated integers, so the
+// local-dev fallback must not contain a suffix like "-dev".
+const version = (process.env.VERSION ?? "0.0.0").replace(/^v/, "");
 
 const out = ejs.render(template, { ...pkg, version });
 const outPath = resolve(root, "out/manifest.json");
