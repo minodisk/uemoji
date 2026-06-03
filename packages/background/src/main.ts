@@ -4,6 +4,7 @@ import {
   finalizeBatch,
   prepareBatch,
   processFromIndex,
+  refreshAvatarUrls,
 } from "./sync";
 
 const storage = makeStorage();
@@ -43,11 +44,13 @@ const runSync = async (teamName: string) => {
       syncBatch.teamName === teamName &&
       syncBatch.processedIndex < syncBatch.userEmojis.length
     ) {
-      // 前回の続きから再開
+      // 前回の続きから再開。バッチ作成時のアバターURLは古い可能性が
+      // あるので、users.listを取り直してURLを更新してから処理する
       console.log(
         `resuming sync: ${syncBatch.processedIndex}/${syncBatch.userEmojis.length}`,
       );
-      batch = syncBatch;
+      batch = await refreshAvatarUrls(syncBatch);
+      await chrome.storage.local.set({ syncBatch: batch });
     } else {
       // 新規バッチ開始
       batch = await prepareBatch(teamName);
